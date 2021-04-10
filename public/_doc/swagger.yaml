@@ -1,0 +1,108 @@
+swagger: '2.0'
+info:
+  description: GitHub Commit Practices API ドキュメント
+  version: 0.0.1
+  title: GitHub Commit Practices REST APIs
+host: localhost:8080
+basePath: /
+tags:
+  - name: ghcp
+    description: GHCP related API
+schemes:
+  - http
+  - https
+paths:
+  /contribute:
+    post:
+      tags:
+        - ghcp
+      summary: データ追加
+      description: データ追加
+      produces:
+        - application/json
+      parameters:
+        - name: x-uuid
+          type: string
+          in: header
+          description: uuid
+          required: true
+        - name: body
+          in: body
+          schema:
+            $ref: '#/definitions/CommitRequest'
+      responses:
+        '200':
+          description: 成功
+        '400':
+          description: エラー
+  /contributes:
+    get:
+      tags:
+        - ghcp
+      summary: 全データ取得
+      description: 全データ取得
+      produces:
+        - application/json
+      parameters:
+        - name: x-uuid
+          type: string
+          in: header
+          description: uuid
+          required: true
+      responses:
+        '200':
+          description: 成功
+        '400':
+          description: エラー
+    delete:
+      tags:
+        - ghcp
+      summary: 全データ削除
+      description: 全データ削除
+      produces:
+        - application/json
+      parameters:
+        - name: x-uuid
+          type: string
+          in: header
+          description: uuid
+          required: true
+      responses:
+        '200':
+          description: 成功
+        '400':
+          description: エラー
+  /contribute/{id}:
+    delete:
+      tags:
+        - ghcp
+      summary: データ削除
+      description: データ削除
+      produces:
+        - application/json
+      parameters:
+        - name: x-uuid
+          type: string
+          in: header
+          description: uuid
+          required: true
+        - name: id
+          type: string
+          in: path
+          description: id
+          required: true
+      responses:
+        '200':
+          description: 成功
+        '400':
+          description: エラー
+definitions:
+  CommitRequest:
+    type: object
+    properties:
+      timestamp:
+        type: integer
+        description: タイムスタンプ
+      comment:
+        type: string
+        description: コメント

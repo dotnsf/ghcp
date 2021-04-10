@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8"/>
+<title>GitHub Commit Practice</title>
+<script type="text/javascript" src="//code.jquery.com/jquery-2.2.4.min.js"></script>
+<link href="//maxcdn.bootstrapcdn.com/bootstrap/4.3.0/css/bootstrap.min.css" rel="stylesheet"/>
+<script src="//maxcdn.bootstrapcdn.com/bootstrap/4.3.0/js/bootstrap.min.js"></script>
+<link href="//maxcdn.bootstrapcdn.com/font-awesome/4.5.0/css/font-awesome.min.css" rel="stylesheet"/>
+
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black"/>
+<meta name="apple-mobile-web-app-title" content="GitHub Contributes"/>
+
+<style type="text/css">
+html, body{
+  height: 100%;
+  text-align: center;
+  background-color: #fff;
+  font-size: 20px;
+  color: #333;
+}
+body{
+  background-color: #fff;
+  padding-top: 80px;
+}
+.navbar{
+  background-color: #ffc;
+}
+#command:focus{
+  border: 2px solid #080;
+}
+</style>
+<script>
+var uuid = generateUUID();
+console.log( 'uuid = ' + uuid );
+
+$(function(){
+  $('#target_date').on( 'input', function(){
+    var date = $('#target_date').val();
+    getContributes( date );
+  });
+
+  $('#command').keypress( function( e ){
+    var keycode = ( e.keyCode ? e.keyCode : e.which );
+    if( keycode == '13' ){
+      commitContribute();
+    }
+  });
+
+  getContributes();
+});
+
+function getContributes( dt ){
+  var url = '/commits?format=svg';
+  if( dt ){
+    url += '&target_date=' + dt
+  }
+
+  $('#forimg').html( '' );
+  $.ajax({
+    type: 'GET',
+    url: url,
+    headers: { 'x-uuid': uuid },
+    dataType: 'text',  //. ここでは XML テキストが欲しいので 'xml' ではなく 'text'
+    success: function( svg ){
+      //. XML テキストの SVG を <div id="forimg"></div> 内に指定
+      $('#forimg').html( svg );
+    },
+    error: function( e0, e1, e2 ){
+      console.log( e0, e1, e2 );
+    }
+  });
+}
+
+function commitContribute(){
+  var command = $('#command').val();
+  if( command && command.startsWith( 'git commit' ) ){
+    var comment = '';
+    if( command.startsWith( "git commit -m '" ) && command.indexOf( "'", 15 ) ){
+      var m = command.indexOf( "'", 15 );
+      comment = command.substring( 15, m );
+    }else if( command.startsWith( 'git commit -m "' ) && command.indexOf( '"', 15 ) ){
+      var m = command.indexOf( '"', 15 );
+      comment = command.substring( 15, m );
+    }
+
+    var date = $('#target_date').val();
+    if( date ){
+      var ts = ( new Date( date ) ).getTime();
+      var data = { timestamp: ts, uuid: uuid, comment: comment };
+
+      $.ajax({
+        type: 'POST',
+        url: '/commit',
+        headers: { 'x-uuid': uuid },
+        data: data,
+        success: function( result ){
+          getContributes( date );
+        },
+        error: function( e0, e1, e2 ){
+          console.log( e0, e1, e2 );
+        }
+      });
+    }
+  
+    $('#command').val( '' );
+  }
+}
+
+function resetContributes(){
+  if( confirm( '本当にリセットしてもいいですか？' ) ){
+    $.ajax({
+      type: 'DELETE',
+      url: '/commits',
+      headers: { 'x-uuid': uuid },
+      success: function( result ){
+        var date = $('#target_date').val();
+        getContributes( date );
+      },
+      error: function( e0, e1, e2 ){
+        console.log( e0, e1, e2 );
+      }
+    });
+  }
+}
+
+function generateUUID(){
+  //. Cookie の値を調べて、有効ならその値で、空だった場合は生成する
+  var did = null;
+  cookies = document.cookie.split(";");
+  for( var i = 0; i < cookies.length; i ++ ){
+    var str = cookies[i].split("=");
+    var une = unescape( str[0] );
+    if( une == " deviceid" || une == "deviceid" ){
+      did = unescape( unescape( str[1] ) );
+    }
+  }
+  if( did == null ){
+    var s = 1000;
+    did = ( new Date().getTime().toString(16) ) + Math.floor( s * Math.random() ).toString(16);
+  }
+
+  // https://qiita.com/yossaito/items/6ffb1b8bb3f9d91107b8
+  var dt = ( new Date() );
+  var ts = dt.getTime();
+  ts += 1000 * 60 * 60 * 24 * 365 * 100; //. 100 years
+  dt.setTime( ts );
+  var value = ( "deviceid=" + did + '; expires=' + dt.toUTCString() + '; path=/' );
+
+  $.ajax({
+    url: '/setcookie',
+    type: 'POST',
+    data: { value: value },
+    success: function( r ){
+      //console.log( 'success: ', r );
+    },
+    error: function( e0, e1, e2 ){
+      //console.log( 'error: ', e1, e2 );
+    }
+  });
+
+  return did;
+}
+</script>
+</head>
+<body>
+
+<nav class="navbar fixed-top">
+  <a class="navbar-brand" href="#">GitHub Commits</a>
+  <div class="navbar-nav mr-auto">
+  </div>
+  <div class="navbar-nav">
+    <li class="nav-item">
+      <input type="button" class="btn btn-danger" id="reset_btn" value="Reset" onClick="resetContributes();"/>
+    </li>
+  </div>
+</nav>
+
+<div class="container">
+  <div id="forimg" style="width:886px; height:183px;"></div>
+</div>
+
+<hr/>
+
+<div class="fixed-bottom" style="background-color: #000;">
+  <table class="table" style="background-color: #000;">
+    <tr>
+      <td style="color:#080; text-align: left;">
+        $ <input type="text" style="width: 90%; color: #080; background-color: #000; border-color: #000;" id="command" placeholder="git commit -m 'some comment'"/>
+      </td>
+      <td>
+        <input type="date" id="target_date"/>
+      </td>
+    </tr>
+  </table>
+</div>
+
+</body>
+</html>
