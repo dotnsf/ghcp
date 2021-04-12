@@ -5,8 +5,9 @@ var express = require( 'express' ),
     app = express();
 
 var settings = require( './settings' );
-
 var db = settings.db;
+
+var messageapi = require( './api/message' );
 
 app.use( express.static( __dirname + '/public' ) );
 app.use( bodyParser.urlencoded( { extended: true, limit: '10mb' } ) );
@@ -135,10 +136,12 @@ app.get( '/commits', function( req, res ){
           //. axis(month)
           var month_labels = [ 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec' ];
           for( var i = 0; i < counts.length; i += 7 ){
-            if( i == 0 && counts[i].date < 8 ){
-              var x = 16;
-              var text = '<text x="' + x + '" y ="-8" class="ContributionCalendar-label">' + month_labels[counts[i].month] + '</text>';
-              svg += text;
+            if( i == 0 ){
+              if( counts[i].date < 8 ){
+                var x = 16;
+                var text = '<text x="' + x + '" y ="-8" class="ContributionCalendar-label">' + month_labels[counts[i].month] + '</text>';
+                svg += text;
+              }
             }else if( counts[i-7].month != counts[i].month ){
               var x = 16 + ( i / 7 ) * 16;
               var text = '<text x="' + x + '" y ="-8" class="ContributionCalendar-label">' + month_labels[counts[i].month] + '</text>';
@@ -309,6 +312,30 @@ app.post( '/setcookie', function( req, res ){
 
   res.write( JSON.stringify( { status: true }, 2, null ) );
   res.end();
+});
+
+app.post( '/message', function( req, res ){
+  res.contentType( 'application/json; charset=utf-8' );
+
+  var message = req.body.message;
+  if( message ){
+    var uuid = req.headers['x-uuid'];
+    var docs = messageapi.process( message, uuid );
+    db.bulk( { docs: docs }, function( err, body ){
+      if( err ){
+        res.status( 400 );
+        res.write( JSON.stringify( { status: false, message: err } ) );
+        res.end();
+      }else{
+        res.write( JSON.stringify( { status: true, docs: docs } ) );
+        res.end();
+      }
+    });
+  }else{
+    res.status( 400 );
+    res.write( JSON.stringify( { status: false, error: 'no message.' } ) );
+    res.end();
+  }
 });
 
 
